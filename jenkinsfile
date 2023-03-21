@@ -1,0 +1,74 @@
+pipeline {
+
+   agent any
+
+    stages{
+
+        stage('Git Checkout'){
+
+            steps{
+                git 'https://github.com/eyadrihmi/eya.spring-boot.git'
+            }
+        }
+        
+        stage('UNIT Testing'){
+
+            steps{
+                sh 'mvn test'
+            }
+        }
+        
+        stage('Integration testing'){
+
+            steps{
+                sh 'mvn verify -DskipUnitTests'
+            }
+        }
+
+        stage('Maven Build'){
+
+            steps{
+                sh 'mvn clean install'
+            }
+        }
+        
+
+        stage('SonarQube analysis'){
+
+            steps{
+                script{
+                    withSonarQubeEnv(credentialsId: 'sonar-api') {
+                        sh 'mvn clean package sonar:sonar'
+                }
+                }  
+            }
+        }
+        
+        
+         stage('Upload to nexus'){
+
+            steps{
+                script{
+                    nexusArtifactUploader artifacts: 
+                    [
+                        [
+                            artifactId: 'helloworld'
+                            , classifier: '',
+                            file: 'target/helloworld.jar',
+                            type: 'jar'
+                        ]
+                    ], 
+                    credentialsId: 'nexus-auth',
+                    groupId: 'com.coveros.demo',
+                    nexusUrl: '172.29.12.42:8081',
+                    nexusVersion: 'nexus3',
+                    protocol: 'http',
+                    repository: 'demoapp-release',
+                    version: '1.1'
+                }  
+            }
+        }
+
+        
+    }
+}
